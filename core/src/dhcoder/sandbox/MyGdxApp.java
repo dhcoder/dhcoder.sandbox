@@ -19,16 +19,23 @@ import megamu.mesh.Voronoi;
 public class MyGdxApp extends ApplicationAdapter {
 
     private static final int AUTOMATA_ITERATIONS = 5;
-    private static final int CELL_SIZE = 10;
+    private static final int CELL_SIZE = 20;
     public static final int START_WALL_Y = 6;
+
+    Vector2 myPlayerPosition = new Vector2();
+    float myVisionRadius = 100.0f;
+
     CellType[][] myCells;
     int[][] myNeighborCounts;
     Vector2[][] myPoints;
     MPolygon[][] myRegions;
     Star[] myStars;
-    private boolean myDrawCellOutlines;
     private Camera myCamera;
     private ShapeRenderer myShapeRenderer;
+    private Color myColorVision = new Color(1.0f, 1.0f, 0.0f, 0.3f);
+
+    private boolean myDrawCellOutlines;
+    private boolean myFogOfWarEnabled;
 
     @Override
     public void create() {
@@ -203,6 +210,18 @@ public class MyGdxApp extends ApplicationAdapter {
 
         myShapeRenderer.end();
 
+        Gdx.gl.glEnable(GL20.GL_BLEND);
+
+        myShapeRenderer.begin(ShapeType.Filled);
+        myShapeRenderer.setColor(myColorVision);
+        myShapeRenderer.circle(myPlayerPosition.x, myPlayerPosition.y, myVisionRadius);
+        myShapeRenderer.setColor(Color.ORANGE);
+        myShapeRenderer.circle(myPlayerPosition.x, myPlayerPosition.y, 5f);
+        myShapeRenderer.end();
+
+        Gdx.gl.glDisable(GL20.GL_BLEND);
+        Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
         if (myDrawCellOutlines) {
             myShapeRenderer.setColor(Color.WHITE);
             myShapeRenderer.begin(ShapeType.Point);
@@ -248,6 +267,8 @@ public class MyGdxApp extends ApplicationAdapter {
 
     private class MyInputHandler extends InputAdapter {
         private CellType myTargetCellType = CellType.Open;
+        private Vector2 myTouch = new Vector2();
+        private Vector3 myTouch3d = new Vector3();
 
         @Override
         public boolean keyDown(int keycode) {
@@ -278,17 +299,24 @@ public class MyGdxApp extends ApplicationAdapter {
         }
 
         @Override
+        public boolean mouseMoved(int screenX, int screenY) {
+            updateMyTouch(screenX, screenY);
+            myPlayerPosition.set(myTouch);
+
+            return true;
+        }
+
+        @Override
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
             return handleTouch(screenX, screenY);
         }
 
         private boolean handleTouch(int screenX, int screenY) {
-            Vector3 touch = new Vector3(screenX, screenY, 0);
-            myCamera.unproject(touch);
+            updateMyTouch(screenX, screenY);
 
             for (int x = 0; x < myRegions.length; x++) {
                 for (int y = 0; y < myRegions[x].length; y++) {
-                    if (myRegions[x][y].contains(touch.x, touch.y)) {
+                    if (myRegions[x][y].contains(myTouch.x, myTouch.y)) {
                         myCells[x][y] = myTargetCellType;
                         break;
                     }
@@ -296,6 +324,13 @@ public class MyGdxApp extends ApplicationAdapter {
             }
 
             return true;
+        }
+
+        // Call this and then myTouch3d vec will have screen coordinates
+        private void updateMyTouch(int screenX, int screenY) {
+            myTouch3d.set(screenX, screenY, 0f);
+            myCamera.unproject(myTouch3d);
+            myTouch.set(myTouch3d.x, myTouch3d.y);
         }
 
         @Override
