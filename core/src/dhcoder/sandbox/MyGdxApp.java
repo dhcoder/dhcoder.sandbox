@@ -12,6 +12,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import megamu.mesh.MPolygon;
 import megamu.mesh.Voronoi;
 
@@ -29,6 +30,58 @@ public class MyGdxApp extends ApplicationAdapter {
     public static final int GRID_START_Y = GRID_H / 10;
 
     private class MyInputHandler extends InputAdapter {
+        private CellType myTargetCellType;
+        private Vector2 myTouch = new Vector2();
+        private Vector3 myTouch3d = new Vector3();
+
+        @Override
+        public boolean mouseMoved(int screenX, int screenY) {
+            updateMyTouch(screenX, screenY);
+//            myPlayerPosition.set(myTouch);
+
+            return true;
+        }
+
+        @Override
+        public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+            updateMyTouch(screenX, screenY);
+            Region r = getRegion(myTouch.x, myTouch.y);
+            myTargetCellType = (r.myType == CellType.Open ? CellType.Wall : CellType.Open);
+
+            r.myType = myTargetCellType;
+
+            return true;
+        }
+
+        private Region getRegion(float worldX, float worldY) {
+
+            for (Region region : myRegions) {
+                if (region.contains(worldX, worldY)) {
+                    return region;
+                }
+            }
+
+            throw new IllegalArgumentException();
+        }
+
+        // Call this and then myTouch3d vec will have screen coordinates
+        private void updateMyTouch(int screenX, int screenY) {
+            myTouch3d.set(screenX, screenY, 0f);
+            myCamera.unproject(myTouch3d);
+            myTouch.set(myTouch3d.x, myTouch3d.y);
+        }
+
+        @Override
+        public boolean touchDragged(int screenX, int screenY, int pointer) {
+            updateMyTouch(screenX, screenY);
+            Region r = getRegion(myTouch.x, myTouch.y);
+            r.myType = myTargetCellType;
+
+            return true;
+        }
+
+
+
         @Override
         public boolean keyDown(int keycode) {
             if (keycode == Input.Keys.SPACE) {
@@ -47,6 +100,35 @@ public class MyGdxApp extends ApplicationAdapter {
         private Vector2 mySite;
         private Vector2 myCoords[];
         private CellType myType;
+
+        public boolean contains(float x, float y) {
+            Vector2 pt0 = myCoords[0];
+            for (int i = 1; i < myCoords.length - 1; i++) {
+                Vector2 pt1 = myCoords[i];
+                Vector2 pt2 = myCoords[i + 1];
+                if (isPointInTriangle(x, y, pt0.x, pt0.y, pt1.x, pt1.y, pt2.x, pt2.y)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private float sign(float x1, float y1, float x2, float y2, float x3, float y3) {
+            return (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3);
+        }
+
+        private boolean isPointInTriangle(float x, float y, float tx1, float ty1, float tx2, float ty2, float tx3, float
+            ty3) {
+            boolean b1, b2, b3;
+
+            b1 = sign(x, y, tx1, ty1, tx2, ty2) < 0.0f;
+            b2 = sign(x, y, tx2, ty2, tx3, ty3) < 0.0f;
+            b3 = sign(x, y, tx3, ty3, tx1, ty1) < 0.0f;
+
+            return ((b1 == b2) && (b2 == b3));
+        }
+
     }
 
     @Override
@@ -87,12 +169,12 @@ public class MyGdxApp extends ApplicationAdapter {
             myCave = new CaveAutomata(GRID_W, GRID_H, GRID_START_Y);
             myCave.run(3);
 
-            for (int i = 0; i < myRegions.length; i++) {
-                float x = myRegions[i].mySite.x;
-                float y = myRegions[i].mySite.y;
-                int gridX = (int)(((x + halfW) / Gdx.graphics.getWidth()) * GRID_W);
-                int gridY = (int)(((y + halfH) / Gdx.graphics.getHeight()) * GRID_H);
-                myRegions[i].myType = myCave.getCellTypes()[gridX][gridY];
+            for (Region myRegion : myRegions) {
+                float x = myRegion.mySite.x;
+                float y = myRegion.mySite.y;
+                int gridX = (int) (((x + halfW) / Gdx.graphics.getWidth()) * GRID_W);
+                int gridY = (int) (((y + halfH) / Gdx.graphics.getHeight()) * GRID_H);
+                myRegion.myType = myCave.getCellTypes()[gridX][gridY];
             }
         }
     }
