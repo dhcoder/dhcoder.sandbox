@@ -2,9 +2,6 @@ package dhcoder.sandbox;
 
 import com.badlogic.gdx.math.MathUtils;
 
-/**
- * TODO: Missing header comment
- */
 public final class CaveAutomata extends CellAutomata {
     private final int myStartY;
     private int[][] myNeighborCounts;

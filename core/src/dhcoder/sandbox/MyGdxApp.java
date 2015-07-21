@@ -61,17 +61,18 @@ public class MyGdxApp extends ApplicationAdapter {
             int i = 0;
             for (MPolygon region : voronoi.getRegions()) {
                 myRegions[i] = new Region();
-                myRegions[i].mySite = new Vector2(voronoiPoints[i][0], voronoiPoints[i][1]);
+                myRegions[i].setSite(new Vector2(voronoiPoints[i][0], voronoiPoints[i][1]));
                 float[][] coords = region.getCoords();
-                myRegions[i].mySides = new Segment[coords.length];
+                Segment[] sides = new Segment[coords.length];
                 for (int s = 0; s < coords.length; s++) {
                     int s2 = (s + 1) % coords.length;
-                    myRegions[i].mySides[s] = new Segment(
+                    sides[s] = new Segment(
                         new Vector2(coords[s][0], coords[s][1]),
                         new Vector2(coords[s2][0], coords[s2][1]));
                 }
 
-                myRegions[i].myType = CellType.Wall;
+                myRegions[i].setSides(sides);
+                myRegions[i].setType(CellType.Wall);
                 i++;
             }
         }
@@ -85,11 +86,11 @@ public class MyGdxApp extends ApplicationAdapter {
         myCave.run(3);
 
         for (Region myRegion : myRegions) {
-            float x = myRegion.mySite.x;
-            float y = myRegion.mySite.y;
+            float x = myRegion.getSite().x;
+            float y = myRegion.getSite().y;
             int gridX = (int) (((x + halfW) / Gdx.graphics.getWidth()) * GRID_W);
             int gridY = (int) (((y + halfH) / Gdx.graphics.getHeight()) * GRID_H);
-            myRegion.myType = myCave.getCellTypes()[gridX][gridY];
+            myRegion.setType(myCave.getCellTypes()[gridX][gridY]);
         }
     }
 
@@ -98,14 +99,14 @@ public class MyGdxApp extends ApplicationAdapter {
         myDivingBorders.clear();
 
         for (Region region : myRegions) {
-            for (Segment side : region.mySides) {
+            for (Segment side : region.getSides()) {
                 if (!myConsideringSegments.containsKey(side)) {
                     assert (!myDivingBorders.contains(side));
-                    myConsideringSegments.put(side, region.myType);
+                    myConsideringSegments.put(side, region.getType());
                 }
                 else {
                     CellType cellType = myConsideringSegments.remove(side);
-                    if (cellType != region.myType) {
+                    if (cellType != region.getType()) {
                         myDivingBorders.put(side);
                     }
                 }
@@ -124,14 +125,15 @@ public class MyGdxApp extends ApplicationAdapter {
         boolean drawRegions = !myDrawGrid;
         if (drawRegions) {
             for (Region region : myRegions) {
-                if (region.myType == CellType.Open) {
+                if (region.getType() == CellType.Open) {
                     continue;
                 }
 
-                Vector2 coord0 = region.mySides[0].myPt1;
-                for (int s = 1; s < region.mySides.length - 1; s++) {
-                    Vector2 coord1 = region.mySides[s].myPt1;
-                    Vector2 coord2 = region.mySides[s].myPt2;
+                Segment[] sides = region.getSides();
+                Vector2 coord0 = sides[0].getPt1();
+                for (int s = 1; s < sides.length - 1; s++) {
+                    Vector2 coord1 = sides[s].getPt1();
+                    Vector2 coord2 = sides[s].getPt2();
                     myShapeRenderer.triangle(coord0.x, coord0.y, coord1.x, coord1.y, coord2.x, coord2.y);
                 }
             }
@@ -162,21 +164,21 @@ public class MyGdxApp extends ApplicationAdapter {
             myShapeRenderer.begin(ShapeType.Point);
             myShapeRenderer.setColor(Color.WHITE);
             for (Region region : myRegions) {
-                myShapeRenderer.point(region.mySite.x, region.mySite.y, 0f);
+                myShapeRenderer.point(region.getSite().x, region.getSite().y, 0f);
             }
             myShapeRenderer.end();
             myShapeRenderer.begin(ShapeType.Line);
             if (myDrawMode == DrawMode.ALL_BORDERS) {
                 myShapeRenderer.setColor(Color.GRAY);
                 for (Region region : myRegions) {
-                    for (Segment side : region.mySides) {
-                        myShapeRenderer.line(side.myPt1, side.myPt2);
+                    for (Segment side : region.getSides()) {
+                        myShapeRenderer.line(side.getPt1(), side.getPt2());
                     }
                 }
             }
             myShapeRenderer.setColor(Color.WHITE);
             for (Segment side : myDivingBorders.getKeys()) {
-                myShapeRenderer.line(side.myPt1, side.myPt2);
+                myShapeRenderer.line(side.getPt1(), side.getPt2());
             }
 
             myShapeRenderer.end();
@@ -191,70 +193,6 @@ public class MyGdxApp extends ApplicationAdapter {
         public DrawMode getNext() {
             DrawMode[] values = values();
             return values[(ordinal() + 1) % values.length];
-        }
-    }
-
-    private static class Region {
-        private Vector2 mySite;
-        private Segment mySides[];
-        private CellType myType;
-
-        public boolean contains(float x, float y) {
-            Vector2 pt0 = mySides[0].myPt1;
-            for (int i = 1; i < mySides.length - 1; i++) {
-                Vector2 pt1 = mySides[i].myPt1;
-                Vector2 pt2 = mySides[i].myPt2;
-                if (isPointInTriangle(x, y, pt0.x, pt0.y, pt1.x, pt1.y, pt2.x, pt2.y)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private float sign(float x1, float y1, float x2, float y2, float x3, float y3) {
-            return (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3);
-        }
-
-        private boolean isPointInTriangle(float x, float y, float tx1, float ty1, float tx2, float ty2, float tx3, float
-            ty3) {
-            boolean b1, b2, b3;
-
-            b1 = sign(x, y, tx1, ty1, tx2, ty2) < 0.0f;
-            b2 = sign(x, y, tx2, ty2, tx3, ty3) < 0.0f;
-            b3 = sign(x, y, tx3, ty3, tx1, ty1) < 0.0f;
-
-            return ((b1 == b2) && (b2 == b3));
-        }
-
-    }
-
-    private static class Segment {
-        private Vector2 myPt1;
-        private Vector2 myPt2;
-
-        public Segment(Vector2 pt1, Vector2 pt2) {
-            myPt1 = pt1;
-            myPt2 = pt2;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Segment segment = (Segment) o;
-
-            // A-B segments equal B-A segments
-            if (myPt1.equals(segment.myPt1) && myPt2.equals(segment.myPt2)) return true;
-            if (myPt1.equals(segment.myPt2) && myPt2.equals(segment.myPt1)) return true;
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            // Hashcode should be the same for both A-B and B-A segments
-            return myPt1.hashCode() + myPt2.hashCode();
         }
     }
 
@@ -275,9 +213,9 @@ public class MyGdxApp extends ApplicationAdapter {
         public boolean touchDown(int screenX, int screenY, int pointer, int button) {
             updateMyTouch(screenX, screenY);
             Region r = getRegion(myTouch.x, myTouch.y);
-            myTargetCellType = (r.myType == CellType.Open ? CellType.Wall : CellType.Open);
+            myTargetCellType = (r.getType() == CellType.Open ? CellType.Wall : CellType.Open);
 
-            r.myType = myTargetCellType;
+            r.setType(myTargetCellType);
 
             return true;
         }
@@ -310,7 +248,7 @@ public class MyGdxApp extends ApplicationAdapter {
         public boolean touchDragged(int screenX, int screenY, int pointer) {
             updateMyTouch(screenX, screenY);
             Region r = getRegion(myTouch.x, myTouch.y);
-            r.myType = myTargetCellType;
+            r.setType(myTargetCellType);
 
             return true;
         }
