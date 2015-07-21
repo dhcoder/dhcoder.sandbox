@@ -13,6 +13,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.JsonWriter;
 import dhcoder.support.collection.ArrayMap;
 import dhcoder.support.collection.ArraySet;
 import megamu.mesh.MPolygon;
@@ -24,6 +26,7 @@ public class MyGdxApp extends ApplicationAdapter {
     public static final int GRID_W = 100;
     public static final int GRID_H = 50;
     public static final int GRID_START_Y = GRID_H / 10;
+    public static final String TAG = "SANDBOX";
     private Camera myCamera;
     private ShapeRenderer myShapeRenderer;
     private Region[] myRegions;
@@ -196,10 +199,21 @@ public class MyGdxApp extends ApplicationAdapter {
         }
     }
 
+    private enum InputMode {
+        NOT_LISTENING,
+        LISTENING,
+        CONFIRMING,
+    }
+
     private class MyInputHandler extends InputAdapter {
         private CellType myTargetCellType;
+        private InputMode myInputMode = InputMode.NOT_LISTENING;
+        private int myFileTarget;
+        private boolean myLoadFile;
         private Vector2 myTouch = new Vector2();
         private Vector3 myTouch3d = new Vector3();
+        private Json myJson = new Json(JsonWriter.OutputType.json);
+
 
         @Override
         public boolean mouseMoved(int screenX, int screenY) {
@@ -262,6 +276,62 @@ public class MyGdxApp extends ApplicationAdapter {
             }
             else if (keycode == Input.Keys.TAB) {
                 myDrawGrid = !myDrawGrid;
+                return true;
+            }
+            else if (keycode == Input.Keys.S || keycode == Input.Keys.L) {
+                if (myInputMode == InputMode.NOT_LISTENING) {
+                    myInputMode = InputMode.LISTENING;
+                    myLoadFile = keycode == Input.Keys.L;
+                    Gdx.app.log(TAG, String.format("Press 0-9 to %s map, ESC to cancel", myLoadFile ? "load" : "save"));
+                    return true;
+                }
+            }
+            else if (keycode >= Input.Keys.NUM_0 && keycode <= Input.Keys.NUM_9) {
+                if (myInputMode == InputMode.LISTENING) {
+                    myInputMode = InputMode.CONFIRMING;
+                    myFileTarget = keycode - Input.Keys.NUM_0;
+                    Gdx.app.log(TAG, String.format("Target to %s: %d. Are you sure? (y/n)",
+                        myLoadFile ? "load" : "save", myFileTarget));
+                    return true;
+                }
+            }
+            else if (keycode == Input.Keys.Y) {
+                if (myInputMode == InputMode.CONFIRMING) {
+                    String filename = Integer.toString(myFileTarget);
+                    if (myLoadFile) {
+                        Gdx.app.log(TAG, String.format("Loading: %s...", filename));
+                        Region[] loaded = MapFile.load(myJson, filename);
+                        if (loaded != null) {
+                            myRegions = loaded;
+                            initBorders();
+                            myCave.clear();
+                            Gdx.app.log(TAG, "Success!");
+                        }
+                        else {
+                            Gdx.app.log(TAG, "Failed");
+                        }
+                    }
+                    else {
+                        MapFile.save(myJson, filename, myRegions);
+                        Gdx.app.log(TAG, String.format("Saved: %s", filename));
+                    }
+                    myInputMode = InputMode.NOT_LISTENING;
+                    return true;
+                }
+            }
+            else if (keycode == Input.Keys.N) {
+                if (myInputMode == InputMode.CONFIRMING) {
+                    myInputMode = InputMode.NOT_LISTENING;
+                    Gdx.app.log(TAG, String.format("%s cancelled", myLoadFile ? "Load" : "Save"));
+                    return true;
+                }
+            }
+            else if (keycode == Input.Keys.ESCAPE) {
+                if (myInputMode != InputMode.NOT_LISTENING) {
+                    myInputMode = InputMode.NOT_LISTENING;
+                    Gdx.app.log(TAG, String.format("%s cancelled", myLoadFile ? "Load" : "Save"));
+                    return true;
+                }
             }
 
             return false;
