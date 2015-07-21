@@ -74,7 +74,7 @@ public final class CaveAutomata extends CellAutomata {
         }
 
         for (int x = 1; x < gridW - 1; ++x) {
-            for (int y = 1; y < gridH - myStartY; ++y) {
+            for (int y = 1; y < gridH - myStartY - 1; ++y) {
                 myCellTypes[x][y] = myNeighborCounts[x][y] >= 5 ? CellType.Wall : CellType.Open;
             }
         }
