@@ -27,6 +27,8 @@ public class MyGdxApp extends ApplicationAdapter {
         mySpriteBatch = new SpriteBatch();
         mySpriteBatch.setProjectionMatrix(myCamera.combined);
         myLogo = new Texture(Gdx.files.internal("badlogic.jpg"));
+        mySpriteBatch.setShader(new BasicShader("shaders/inverse").getProgram());
+
         Gdx.input.setInputProcessor(new MyInputHandler());
     }
 
@@ -43,7 +45,6 @@ public class MyGdxApp extends ApplicationAdapter {
         mySpriteBatch.begin();
         mySpriteBatch.draw(myLogo, -myLogo.getHeight() / 2f, -myLogo.getWidth() / 2f);
         mySpriteBatch.end();
-
     }
 
     private class MyInputHandler extends InputAdapter {
@@ -77,6 +78,7 @@ public class MyGdxApp extends ApplicationAdapter {
         @Override
         public boolean keyDown(int keycode) {
             if (keycode == Input.Keys.ESCAPE) {
+                Gdx.app.log(TAG, "Quitting");
                 Gdx.app.exit();
                 return true;
             }
