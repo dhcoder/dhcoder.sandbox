@@ -22,6 +22,10 @@ public final class Segment {
         return myPt2;
     }
 
+    public boolean contains(Vector2 pt) {
+        return myPt1.equals(pt) || myPt2.equals(pt);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

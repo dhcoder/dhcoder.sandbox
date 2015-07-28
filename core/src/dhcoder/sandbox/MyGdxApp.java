@@ -42,7 +42,8 @@ public class MyGdxApp extends ApplicationAdapter {
     private CaveAutomata myCave;
     private ArraySet<Segment> myDividingBorders = new ArraySet<Segment>(NUM_REGIONS);
     private ArrayList<Vector2> myVisiblePoints = new ArrayList<Vector2>();
-    private ArrayList<Float> myTest;
+    private ArrayList<Segment> myVisibleBorders = new ArrayList<Segment>();
+    private Vector2 myVelocity = new Vector2();
 
     @Override
     public void create() {
@@ -59,6 +60,7 @@ public class MyGdxApp extends ApplicationAdapter {
 
     private void updateVisiblePoints() {
         myVisiblePoints.clear();
+        myVisibleBorders.clear();
         ArrayList<Segment> bordersInRange = new ArrayList<Segment>();
         final Vector2 tmp = new Vector2();
 
@@ -77,15 +79,30 @@ public class MyGdxApp extends ApplicationAdapter {
             myVisiblePoints.add(new Vector2(border.getPt2()));
         }
 
-        // Update visible points if they're blocked
-        for (Vector2 pt : myVisiblePoints) {
+//        // Update visible points if they're blocked
+//        for (Vector2 pt : myVisiblePoints) {
+//            for (Segment border : bordersInRange) {
+//                if (border.getPt1().equals(pt) || border.getPt2().equals(pt)) {
+//                    continue;
+//                }
+//                boolean intersected = Intersector.intersectSegments(myPos, pt, border.getPt1(), border.getPt2(), tmp);
+//                if (intersected) {
+//                    pt.set(tmp);
+//                }
+//            }
+//        }
+        // Remove points if they're blocked
+        for (int i = 0; i < myVisiblePoints.size(); i++) {
+            Vector2 pt = myVisiblePoints.get(i);
             for (Segment border : bordersInRange) {
-                if (border.getPt1().equals(pt) || border.getPt2().equals(pt)) {
+                if (border.contains(pt)) {
                     continue;
                 }
                 boolean intersected = Intersector.intersectSegments(myPos, pt, border.getPt1(), border.getPt2(), tmp);
                 if (intersected) {
-                    pt.set(tmp);
+                    myVisiblePoints.remove(i);
+                    --i;
+                    break;
                 }
             }
         }
@@ -108,12 +125,14 @@ public class MyGdxApp extends ApplicationAdapter {
             }
         }
 
-        myTest = new ArrayList<Float>(myVisiblePoints.size());
-        for (Vector2 pt : myVisiblePoints) {
-            tmp.set(pt).sub(myPos);
-            myTest.add(tmp.angle());
+        for (Segment border : bordersInRange) {
+            for (Vector2 visiblePoint : myVisiblePoints) {
+                if (border.contains(visiblePoint)) {
+                    myVisibleBorders.add(border);
+                    break;
+                }
+            }
         }
-        int breakhere = 0;
     }
 
     private void initRegions() {
@@ -193,6 +212,25 @@ public class MyGdxApp extends ApplicationAdapter {
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        myVelocity.setZero();
+        if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
+            myVelocity.y = 1;
+        }
+        else if (Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+            myVelocity.y = -1;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            myVelocity.x = 1;
+        }
+        else if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            myVelocity.x = -1;
+        }
+
+        if (!myVelocity.isZero()) {
+            myPos.add(myVelocity);
+            updateVisiblePoints();
+        }
+
         myShapeRenderer.begin(ShapeType.Filled);
         myShapeRenderer.setColor(Color.DARK_GRAY);
 
@@ -261,12 +299,15 @@ public class MyGdxApp extends ApplicationAdapter {
             // Vision!
             myShapeRenderer.begin(ShapeType.Line);
             myShapeRenderer.setColor(Color.LIGHT_GRAY);
-            Vector2 coord0 = myPos;
-            for (int i = 1; i < myVisiblePoints.size(); i++) {
-                int i0 = i - 1;
-                Vector2 coord1 = myVisiblePoints.get(i0);
-                Vector2 coord2 = myVisiblePoints.get(i);
-                myShapeRenderer.triangle(coord0.x, coord0.y, coord1.x, coord1.y, coord2.x, coord2.y);
+//            Vector2 coord0 = myPos;
+//            for (int i = 1; i < myVisiblePoints.size(); i++) {
+//                int i0 = i - 1;
+//                Vector2 coord1 = myVisiblePoints.get(i0);
+//                Vector2 coord2 = myVisiblePoints.get(i);
+//                myShapeRenderer.triangle(coord0.x, coord0.y, coord1.x, coord1.y, coord2.x, coord2.y);
+//            }
+            for (Segment border : myVisibleBorders) {
+                myShapeRenderer.line(border.getPt1(), border.getPt2());
             }
             myShapeRenderer.end();
 //            myShapeRenderer.begin(ShapeType.Filled);
@@ -316,7 +357,6 @@ public class MyGdxApp extends ApplicationAdapter {
         private Vector2 myTouch = new Vector2();
         private Vector3 myTouch3d = new Vector3();
         private Json myJson = new Json(JsonWriter.OutputType.json);
-
 
         @Override
         public boolean mouseMoved(int screenX, int screenY) {
@@ -439,26 +479,6 @@ public class MyGdxApp extends ApplicationAdapter {
                     Gdx.app.log(TAG, String.format("%s cancelled", myLoadFile ? "Load" : "Save"));
                     return true;
                 }
-            }
-            else if (keycode == Input.Keys.LEFT) {
-                myPos.x -= 5f;
-                updateVisiblePoints();
-                return true;
-            }
-            else if (keycode == Input.Keys.RIGHT) {
-                myPos.x += 5f;
-                updateVisiblePoints();
-                return true;
-            }
-            else if (keycode == Input.Keys.UP) {
-                myPos.y += 5f;
-                updateVisiblePoints();
-                return true;
-            }
-            else if (keycode == Input.Keys.DOWN) {
-                myPos.y -= 5f;
-                updateVisiblePoints();
-                return true;
             }
 
             return false;
