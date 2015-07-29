@@ -34,6 +34,8 @@ public class MyGdxApp extends ApplicationAdapter {
 
     @Override
     public void render() {
+        update(Gdx.graphics.getRawDeltaTime());
+
         Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -45,6 +47,10 @@ public class MyGdxApp extends ApplicationAdapter {
         mySpriteBatch.begin();
         mySpriteBatch.draw(myLogo, -myLogo.getHeight() / 2f, -myLogo.getWidth() / 2f);
         mySpriteBatch.end();
+    }
+
+    private void update(float deltaTime) {
+        // YOUR CODE HERE
     }
 
     private class MyInputHandler extends InputAdapter {
@@ -68,13 +74,6 @@ public class MyGdxApp extends ApplicationAdapter {
             return true;
         }
 
-        // Call this and then myTouch3d vec will have screen coordinates
-        private void updateMyTouch(int screenX, int screenY) {
-            myTouch3d.set(screenX, screenY, 0f);
-            myCamera.unproject(myTouch3d);
-            myTouch.set(myTouch3d.x, myTouch3d.y);
-        }
-
         @Override
         public boolean keyDown(int keycode) {
             if (keycode == Input.Keys.ESCAPE) {
@@ -84,6 +83,13 @@ public class MyGdxApp extends ApplicationAdapter {
             }
 
             return false;
+        }
+
+        // Call this and then myTouch vec will have screen coordinates
+        private void updateMyTouch(int screenX, int screenY) {
+            myTouch3d.set(screenX, screenY, 0f);
+            myCamera.unproject(myTouch3d);
+            myTouch.set(myTouch3d.x, myTouch3d.y);
         }
     }
 }
